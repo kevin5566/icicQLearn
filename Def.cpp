@@ -15,7 +15,7 @@ double getStrg(vector<baseStation> BS_list, int i, int j, int k, int l, bool isR
     //}
     //result=result+S;
     result=-1*result;
-    result=result+isRS*BS_list[l].power+(~isRS)*BS_list[l].sub_P[k];
+    result=result+isRS*BS_list[l].power+(1-isRS)*BS_list[l].sub_P[k];
     return result;
 }
 
@@ -410,7 +410,7 @@ void RBalloc(vector<baseStation> &BS_list){
 void calcsubSINR(vector<baseStation> &BS_list){
     double sinr_tmp=0;
     double i_tmp=0;
-    double strg_weight_RS=2.5/7.0;
+    double strg_weight_RS=0.214;
     for(int i=0;i<BS_list.size();i++){
         for(int j=0;j<BS_list[i].UE_list.size();j++){
             // i: BS idx
@@ -796,6 +796,8 @@ void QLConfigBSUE(vector<baseStation> &BS_list, vector<action> action_list, int 
         }
     }
 }
+
+//void RBallocSingleBS(vector<baseStation> BS_list, int BS_idx)
 
 double calcAllSINR(vector<baseStation> BS_list){
     double num=0;
