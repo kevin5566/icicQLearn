@@ -1,0 +1,810 @@
+#include "Def.h"
+
+// Return strg value (i.e. Power-PathLoss, unit: dBm) //
+double getStrg(vector<baseStation> BS_list, int i, int j, int k, int l, bool isRS){
+    // i: BS idx
+    // j: UE idx
+    // k: Subband idx
+    // l: target BS idx
+    double d=sqrt(pow(BS_list[i].UE_list[j].x-BS_list[l].x,2.0)+
+                  pow(BS_list[i].UE_list[j].y-BS_list[l].y,2.0));
+    double result=20.0*log10(4.0*3.14159*d_0*carrierFreq/c)+10*n*log10(d/d_0);
+    //double S=shadow_normal(seed1);
+    //while(S-result>-18){
+    //    S=shadow_normal(seed1);
+    //}
+    //result=result+S;
+    result=-1*result;
+    result=result+isRS*BS_list[l].power+(~isRS)*BS_list[l].sub_P[k];
+    return result;
+}
+
+bool readInput(char* ptr, vector<baseStation> &BS_list){
+    // Read BS Input //
+    ifstream infile;
+    infile.open(ptr,ifstream::in);
+    
+    string tmpline;
+    // First line: BSnum //
+    getline(infile,tmpline);
+    int BSnum=atoi(tmpline.c_str());
+    
+    // Next BSnum lines: BS info. //
+    vector<double> tmp;
+    string field;
+    
+    for(int i=0;i<BSnum;i++){
+        getline(infile,tmpline);
+        stringstream element(tmpline);
+        
+        while(getline(element,field,',')){
+            tmp.push_back(atof(field.c_str()));
+        }
+        
+        BS_list.push_back(baseStation(tmp[0],tmp[1],tmp[2]));
+        tmp.clear();
+    }
+    
+    // Read Pa command //
+    for(int i=0;i<BSnum;i++){
+        getline(infile,tmpline);
+        if(tmpline.length()!=50){
+            cout<<"[ERROR] Pa Command length != 50"<<endl;
+            return false;
+        }
+        for(int j=0;j<tmpline.length();j++){
+            BS_list[i].RB_pa[j]=tmpline[j]-'0';
+        }
+    }
+    
+    // Read UE Input //
+    int UEnum=0;
+    Position pType;
+    for(int i=0;i<BSnum;i++){
+        // Read each BS's UE num //
+        getline(infile,tmpline);
+        UEnum=atoi(tmpline.c_str());
+        // Push UE info to UE_list //
+        for(int j=0;j<UEnum;j++){
+            getline(infile,tmpline);
+            stringstream element(tmpline);
+            
+            while(getline(element,field,',')){
+                tmp.push_back(atof(field.c_str()));
+            }
+            
+            switch((int)tmp[2]) {
+                case 0:
+                    pType=CENTER;
+                    break;
+                case 1:
+                    pType=MIDDLE;
+                    break;
+                case 2:
+                    pType=EDGE;
+                    break;
+                default:
+                    cout<<"[ERROR] Position of UE invaild"<<endl;
+                    return false;
+                    break;
+            }
+            
+            BS_list[i].UE_list.push_back(UE(BS_list[i].x+tmp[0],BS_list[i].y+tmp[1],pType,tmp[3]));
+            tmp.clear();
+        }
+    }
+    return true;
+}
+
+bool readInputOpt(char* ptr, vector<baseStation> &BS_list){
+    // Read BS Input //
+    ifstream infile;
+    infile.open(ptr,ifstream::in);
+    
+    string tmpline;
+    // First line: BSnum //
+    getline(infile,tmpline);
+    int BSnum=atoi(tmpline.c_str());
+    
+    // Next BSnum lines: BS info. //
+    vector<double> tmp;
+    string field;
+    
+    for(int i=0;i<BSnum;i++){
+        getline(infile,tmpline);
+        stringstream element(tmpline);
+        
+        while(getline(element,field,',')){
+            tmp.push_back(atof(field.c_str()));
+        }
+        
+        BS_list.push_back(baseStation(tmp[0],tmp[1],tmp[2]));
+        tmp.clear();
+    }
+    
+    // Read Pa command //
+    for(int i=0;i<BSnum;i++){
+        getline(infile,tmpline);
+        if(tmpline.length()!=50){
+            cout<<"[ERROR] Pa Command length != 50"<<endl;
+            return false;
+        }
+        for(int j=0;j<tmpline.length();j++){
+            BS_list[i].RB_pa[j]=tmpline[j]-'0';
+        }
+    }
+    
+    // Read UE Input //
+    int UEnum=0;
+    Position pType;
+    for(int i=0;i<BSnum;i++){
+        // Read each BS's UE num //
+        getline(infile,tmpline);
+        UEnum=atoi(tmpline.c_str());
+        // Push UE info to UE_list //
+        for(int j=0;j<UEnum;j++){
+            getline(infile,tmpline);
+            stringstream element(tmpline);
+            
+            while(getline(element,field,',')){
+                tmp.push_back(atof(field.c_str()));
+            }
+            /*
+            switch((int)tmp[2]) {
+                case 0:
+                    pType=CENTER;
+                    break;
+                case 1:
+                    pType=MIDDLE;
+                    break;
+                case 2:
+                    pType=EDGE;
+                    break;
+                default:
+                    cout<<"[ERROR] Position of UE invaild"<<endl;
+                    return false;
+                    break;
+            }
+            */
+            BS_list[i].UE_list.push_back(UE(BS_list[i].x+tmp[0],BS_list[i].y+tmp[1]));
+            tmp.clear();
+        }
+    }
+    return true;
+}
+
+void calcRSRP(vector<baseStation> &BS_list){
+    for(int i=0;i<BS_list.size();i++){
+        for(int j=0;j<BS_list[i].UE_list.size();j++){
+            for(int k=0;k<BS_list.size();k++){
+                BS_list[i].UE_list[j].RSRP.push_back(getStrg(BS_list,i,j,0,k,1));
+            }
+        }
+    }
+}
+
+void cmdGenerate(vector<baseStation> BS_list, vector<vector<string> > &cmd){
+    int BSnum = BS_list.size();
+
+    for(int i = 0; i < BSnum; i++){
+        vector<string> BS_all_cmd;
+        int UEnum = BS_list[i].UE_list.size();
+        int centerUEnum = 0;
+        int middleUEnum = 0;
+        int edgeUEnum = 0;
+
+        for(int j=0;j<UEnum;j++){
+            switch (BS_list[i].UE_list[j].UePosition) {
+                case CENTER:
+                    centerUEnum++;
+                    break;
+                case MIDDLE:
+                    middleUEnum++;
+                    break;
+                case EDGE:
+                    edgeUEnum++;
+                    break;
+            }
+        }
+
+        int initEdgeRBGnum = (total_RBG_num / UEnum) * edgeUEnum;
+
+        // All Cell-edge UEs Case //
+        if(centerUEnum == 0 && middleUEnum == 0)
+            centerUEnum = 1;
+
+        for(int m = 0; m >= 0; m++){
+            int edgeRBGnum = initEdgeRBGnum - m;
+            int initMiddleRBGnum = ((total_RBG_num - edgeRBGnum) / (middleUEnum + centerUEnum)) * middleUEnum; 
+
+            if(edgeRBGnum < edgeUEnum)
+                break;
+
+            for(int n = 0; n >= 0; n++){
+                int middleRBGnum = initMiddleRBGnum - n;
+                int centerRBGnum = total_RBG_num - edgeRBGnum - middleRBGnum;
+
+                if(middleRBGnum > 0 && edgeRBGnum > 0)
+                    if(middleRBGnum / middleUEnum < edgeRBGnum / edgeUEnum)
+                        break;
+                
+                if(middleRBGnum < middleUEnum)
+                    break;
+
+                // Generate Single Command //
+                string BScmd;
+
+                // For the First eNB //
+                if(i == 0){
+                    for(int k = 0; k < centerRBGnum; k++)
+                        BScmd.append("000");
+                    for(int k = 0; k < middleRBGnum; k++)
+                        BScmd.append("444");
+                    for(int k = 0; k < edgeRBGnum; k++)
+                        BScmd.append("777");
+                    BScmd.append("00");
+                }
+                // For the Second eNB //
+                else if(i == 1){
+                    for(int k = 0; k < edgeRBGnum; k++)
+                        BScmd.append("777");
+                    for(int k = 0; k < middleRBGnum; k++)
+                        BScmd.append("444");
+                    for(int k = 0; k < centerRBGnum; k++)
+                        BScmd.append("000");
+                    BScmd.append("00");
+                }
+
+                BS_all_cmd.push_back(BScmd);
+
+            }            
+        }
+
+        cmd.push_back(BS_all_cmd);
+    }
+}
+
+int cmdComboGen(vector< vector<string> > cmd, vector<vector<int> > &cmdIdx){
+    // Based on carryout principle to generate combo //
+    
+    // Each digit has diff carryout amount //
+    vector<int> carryout;
+    carryout.push_back(cmd[cmd.size()-1].size());
+    for(int i=0;i<cmd.size()-2;i++)
+        carryout.push_back(carryout[i]*cmd[cmd.size()-2-i].size());
+    reverse(carryout.begin(),carryout.end());
+    
+    int Combonum=1;
+    for(int i=0;i<cmd.size();i++){
+        Combonum=Combonum*cmd[i].size();
+        vector<int> tmpidx;
+        cmdIdx.push_back(tmpidx);
+    }
+    
+    for(int i=0;i<Combonum;i++){
+        for(int j=0;j<carryout.size();j++)
+            cmdIdx[j].push_back((i/carryout[j])%cmd[j].size());
+        cmdIdx[cmdIdx.size()-1].push_back(i%carryout[carryout.size()-1]);
+    }
+    
+    return Combonum;
+}
+
+void setPaCmd(vector<baseStation> &BS_list, vector< vector<string> > cmd, vector<vector<int> > cmdIdx, int round_idx){
+    for(int i=0;i<BS_list.size();i++){
+        for(int j=0;j<50;j++){
+            BS_list[i].RB_pa[j]=cmd[i][cmdIdx[i][round_idx]][j]-'0';
+        }
+    }
+}
+
+void RBalloc(vector<baseStation> &BS_list){
+    int UE_pa_num[8]={0,0,0,0,0,0,0,0};
+    int RB_pa_num[8]={0,0,0,0,0,0,0,0};
+    int RB_num=0;
+    int RB_alloced_num=0;
+    int maxRB_num_UE_get=0;
+    int nowRB_num_UE_get=0;
+    vector<int> sched_UE_list;
+    
+    // each iteration schedule one BS //
+    for(int i=0;i<BS_list.size();i++){
+        // sum up each pa level has how much UE //
+        for(int j=0;j<BS_list[i].UE_list.size();j++){
+            UE_pa_num[BS_list[i].UE_list[j].pa]=UE_pa_num[BS_list[i].UE_list[j].pa]+1;
+        }
+        // sum up each pa level has how much RB //
+        for(int j=0;j<N_band;j++){
+            RB_pa_num[BS_list[i].RB_pa[j]]=RB_pa_num[BS_list[i].RB_pa[j]]+1;
+        }
+        // Schedule Algorithm //
+        // higher pa UE first //
+        for(int j=7;j>-1;j--){
+            // j: pa_level value
+            // skip the pa_level w/o UE //
+            if(UE_pa_num[j]==0)
+                continue;
+            
+            // calc the max num of RB that a UE can get //
+            RB_alloced_num=0;
+            for(int k=j;k<8;k++){
+                RB_num=RB_num+RB_pa_num[k];
+                RB_pa_num[k]=0;
+            }
+            
+            // fill now schedule list //
+            for(int k=0;k<BS_list[i].UE_list.size();k++){
+                if(BS_list[i].UE_list[k].pa==j)
+                    sched_UE_list.push_back(k);
+            }
+            // alloc RB //
+            for(int k=0;k<sched_UE_list.size()-1;k++){
+                maxRB_num_UE_get=(RB_num-RB_alloced_num)/(UE_pa_num[j]-k);
+                for(int l=0;l<N_band;l=l+3){
+                    if(nowRB_num_UE_get>=maxRB_num_UE_get){
+                        RB_alloced_num=RB_alloced_num+nowRB_num_UE_get;
+                        nowRB_num_UE_get=0;
+                        break;
+                    }
+                    if(BS_list[i].RB_pa[l]<j)
+                        continue;
+                    if(BS_list[i].sub_alloc[l]!=-1)
+                        continue;
+                    nowRB_num_UE_get=nowRB_num_UE_get+2;
+                    // Specify BS RB alloc to which UE //
+                    BS_list[i].sub_alloc[l]=sched_UE_list[k];
+                    BS_list[i].sub_alloc[l+1]=sched_UE_list[k];
+                    // Modify Power level of BS RB //
+                    BS_list[i].sub_P[l]=BS_list[i].sub_P[l]+pa_level[BS_list[i].UE_list[sched_UE_list[k]].pa];
+                    BS_list[i].sub_P[l+1]=BS_list[i].sub_P[l+1]+pa_level[BS_list[i].UE_list[sched_UE_list[k]].pa];
+                    // Record Actual Pa used of BS RB //
+                    BS_list[i].RB_pa_actual[l]=BS_list[i].UE_list[sched_UE_list[k]].pa;
+                    BS_list[i].RB_pa_actual[l+1]=BS_list[i].UE_list[sched_UE_list[k]].pa;
+                    // Update UE RB used(mask) list //
+                    BS_list[i].UE_list[sched_UE_list[k]].subbandMask[l]=1;
+                    BS_list[i].UE_list[sched_UE_list[k]].subbandMask[l+1]=1;
+                    if(l+2==50)
+                        break;
+                    nowRB_num_UE_get=nowRB_num_UE_get+1;
+                    BS_list[i].sub_alloc[l+2]=sched_UE_list[k];
+                    BS_list[i].sub_P[l+2]=BS_list[i].sub_P[l+2]+pa_level[BS_list[i].UE_list[sched_UE_list[k]].pa];
+                    BS_list[i].RB_pa_actual[l+2]=BS_list[i].UE_list[sched_UE_list[k]].pa;
+                    BS_list[i].UE_list[sched_UE_list[k]].subbandMask[l+2]=1;
+                }
+            }
+            // last one UE get all remains RB  //
+            // do similar thing in above //
+            for(int l=0;l<N_band;l=l+3){
+                if(BS_list[i].RB_pa[l]<j)
+                    continue;
+                if(BS_list[i].sub_alloc[l]!=-1)
+                    continue;
+                BS_list[i].sub_alloc[l]=sched_UE_list[sched_UE_list.size()-1];
+                BS_list[i].sub_alloc[l+1]=sched_UE_list[sched_UE_list.size()-1];
+                BS_list[i].sub_P[l]=BS_list[i].sub_P[l]+pa_level[BS_list[i].UE_list[sched_UE_list[sched_UE_list.size()-1]].pa];
+                BS_list[i].sub_P[l+1]=BS_list[i].sub_P[l+1]+pa_level[BS_list[i].UE_list[sched_UE_list[sched_UE_list.size()-1]].pa];
+                BS_list[i].RB_pa_actual[l]=BS_list[i].UE_list[sched_UE_list[sched_UE_list.size()-1]].pa;
+                BS_list[i].RB_pa_actual[l+1]=BS_list[i].UE_list[sched_UE_list[sched_UE_list.size()-1]].pa;
+                BS_list[i].UE_list[sched_UE_list[sched_UE_list.size()-1]].subbandMask[l]=1;
+                BS_list[i].UE_list[sched_UE_list[sched_UE_list.size()-1]].subbandMask[l+1]=1;
+                if(l+2==50)
+                    break;
+                BS_list[i].sub_alloc[l+2]=sched_UE_list[sched_UE_list.size()-1];
+                BS_list[i].sub_P[l+2]=BS_list[i].sub_P[l+2]+pa_level[BS_list[i].UE_list[sched_UE_list[sched_UE_list.size()-1]].pa];
+                BS_list[i].RB_pa_actual[l+2]=BS_list[i].UE_list[sched_UE_list[sched_UE_list.size()-1]].pa;
+                BS_list[i].UE_list[sched_UE_list[sched_UE_list.size()-1]].subbandMask[l+2]=1;
+            }
+            
+            RB_num=0;
+            sched_UE_list.clear();
+        }
+        // One BS Schedule done //
+        
+        for(int j=0;j<8;j++){
+            UE_pa_num[j]=0;
+            RB_pa_num[j]=0;
+        }
+    }
+}
+
+void calcsubSINR(vector<baseStation> &BS_list){
+    double sinr_tmp=0;
+    double i_tmp=0;
+    double strg_weight_RS=2.5/7.0;
+    for(int i=0;i<BS_list.size();i++){
+        for(int j=0;j<BS_list[i].UE_list.size();j++){
+            // i: BS idx
+            // j: UE idx
+            // k: Subband idx
+            // l: target BS idx
+            for(int k=0;k<N_band;k++){
+                if(BS_list[i].UE_list[j].subbandMask[k]==0)
+                    continue;
+                i_tmp=pow(10,N_0*(BW/N_band)/10);   //noise
+                for(int l=0;l<BS_list.size();l++){
+                    if(l==i)
+                        sinr_tmp=getStrg(BS_list,i,j,k,l,0); //414
+                    else{
+                        // RB used interference strg up //
+                        if(BS_list[l].sub_alloc[k]==-1) // only RS
+                            i_tmp=i_tmp+strg_weight_RS*pow(10,getStrg(BS_list,i,j,k,l,1)/10);
+                        else
+                            i_tmp=i_tmp+strg_weight_RS*pow(10,getStrg(BS_list,i,j,k,l,1)/10)+(1-strg_weight_RS)*pow(10,getStrg(BS_list,i,j,k,l,0)/10);
+                    }
+                    
+                }
+                //cout<<"S: "<<sinr_tmp<<endl;
+                //cout<<"I+N: "<<10*log10(i_tmp)<<endl;
+                sinr_tmp=sinr_tmp-10*log10(i_tmp);
+                //cout<<"SINR: "<<sinr_tmp<<endl<<endl;
+                BS_list[i].UE_list[j].subbandSINR[k]=sinr_tmp;
+            }
+        }
+    }
+}
+
+void calcavgSINR(vector<baseStation> &BS_list){
+    double avg=0;
+    for(int i=0;i<BS_list.size();i++){
+        for(int j=0;j<BS_list[i].UE_list.size();j++){
+            for(int k=0;k<BS_list[i].UE_list[j].subbandSINR.size();k++){
+                if(BS_list[i].UE_list[j].subbandMask[k]==1)
+                    avg=avg+BS_list[i].UE_list[j].subbandSINR[k];
+            }
+            avg=avg/(double)accumulate(BS_list[i].UE_list[j].subbandMask.begin(),BS_list[i].UE_list[j].subbandMask.end(),0);
+            BS_list[i].UE_list[j].avgSINR=avg;
+            avg=0;
+        }
+    }
+}
+
+int selectCQI(double SNR_UPPERBOUND, double BLER_UPPERBOUND){
+    // Outer_layer(i): CQI
+    // Inner_layer(j): BLER
+    for(int i=CQI_size-1;i>-1;i--){
+        for(int j=level_size-1;j>-1;j--){
+            if(BLER_CQI[j][i]<=BLER_UPPERBOUND){
+                if(SNR_CQI[j][i]<=SNR_UPPERBOUND){
+                    return i+1;       // CQI = idx+1 !!
+                }
+            }
+        }
+    }
+    return 0;
+}
+
+int selectMCS(double SNR){
+    for(int i=0;i<MCS_map_size;i++){
+        if(SNR>SNR2MCS_range[i])
+            return SNR2MCS_map[i];
+    }
+    return 0;
+}
+
+void showUEinfo(vector<baseStation> BS_list){
+    int RBnum=0;
+    cout<<"////////////////////// UE Info //////////////////////"<<endl;
+    for(int i=0;i<BS_list.size();i++){
+        cout<<setw(6)<<"BS idx"<<"|"<<setw(6)<<"x"<<"|"<<setw(6)<<"y"<<endl;
+        cout<<setw(6)<<i<<"|"<<setw(6)<<BS_list[i].x<<"|"<<setw(6)<<BS_list[i].y<<endl;
+        cout<<setw(6)<<"UE idx"<<"|"
+            <<setw(6)<<"x"<<"|"
+            <<setw(6)<<"y"<<"|"
+            <<setw(9)<<"d_to_eNB"<<"|"
+            <<setw(9)<<"Position"<<"|"
+            <<setw(10)<<"avgSINR"<<"|"
+            <<setw(4)<<"CQI"<<"|"
+            <<setw(4)<<"MCS"<<"|"
+            <<setw(3)<<"Pa"<<"|"
+            <<setw(6)<<"RBnum"<<"|"
+            <<setw(13)<<"CQI Thrghput"<<"|"
+            <<setw(13)<<"MCS Thrghput"<<endl;
+        for(int j=0;j<BS_list[i].UE_list.size();j++){
+            RBnum=accumulate(BS_list[i].UE_list[j].subbandMask.begin(),BS_list[i].UE_list[j].subbandMask.end(),0);
+            cout<<setw(6)<<j<<"|"
+                <<setw(6)<<BS_list[i].UE_list[j].x<<"|"
+                <<setw(6)<<BS_list[i].UE_list[j].y<<"|"
+                <<setw(9)<<sqrt(pow(BS_list[i].UE_list[j].x-BS_list[i].x,2.0)+pow(BS_list[i].UE_list[j].y-BS_list[i].y,2.0))<<"|"
+                <<setw(9)<<p_type[(int)BS_list[i].UE_list[j].UePosition]<<"|"
+                <<setw(10)<<BS_list[i].UE_list[j].avgSINR<<"|"
+                <<setw(4)<<BS_list[i].UE_list[j].CQI<<"|"
+                <<setw(4)<<BS_list[i].UE_list[j].MCS<<"|"
+                <<setw(3)<<BS_list[i].UE_list[j].pa<<"|"
+                <<setw(6)<<RBnum<<"|"
+                <<setw(13)<<RBnum*CQI_eff[BS_list[i].UE_list[j].CQI]*BW/N_band/1000000<<"|"
+                <<setw(13)<<RBnum*MCS_TBS_50mimo[BS_list[i].UE_list[j].MCS]/N_band/1000<<endl;
+        }
+        cout<<endl;
+    }
+}
+
+void showUEallocRB(vector<baseStation> BS_list){
+    cout<<"////////////////////////// UE RB used //////////////////////////"<<endl;
+    for(int i=0;i<BS_list.size();i++){
+        cout<<setw(6)<<"BS idx"<<":"<<setw(3)<<i<<endl;
+        cout<<setw(6)<<"UE idx"<<"|"<<setw(9)<<"RB used"<<"(1: Used, 0: No Use)"<<endl;
+        for(int j=0;j<BS_list[i].UE_list.size();j++){
+            cout<<setw(6)<<j<<"|  ";
+            for(int k=0;k<N_band;k++){
+                cout<<BS_list[i].UE_list[j].subbandMask[k];
+            }
+            cout<<" ("<<setw(2)<<accumulate(BS_list[i].UE_list[j].subbandMask.begin(),BS_list[i].UE_list[j].subbandMask.end(),0)<<")";
+            cout<<endl;
+        }
+        cout<<endl;
+    }
+}
+
+void showBSinfo(vector<baseStation> BS_list){
+    cout<<"/////////////////////// Base Station Info. //////////////////////"<<endl;
+    for(int i=0;i<BS_list.size();i++){
+        cout<<setw(12)<<"BS idx"<<":"<<setw(3)<<i<<endl;
+        cout<<setw(12)<<"RB_Pa_origin"<<":  ";
+        for(int j=0;j<N_band;j++){
+            cout<<BS_list[i].RB_pa[j];
+        }
+        cout<<endl;
+        cout<<setw(12)<<"RB_Pa_actual"<<":  ";
+        for(int j=0;j<N_band;j++){
+            if(BS_list[i].RB_pa_actual[j]==-1)
+                cout<<"X";
+            else
+                cout<<BS_list[i].RB_pa_actual[j];
+        }
+        cout<<endl;
+        cout<<setw(12)<<"RB_alloc_to_"<<":  ";
+        for(int j=0;j<N_band;j++){
+            if(BS_list[i].sub_alloc[j]==-1)
+                cout<<"X";
+            else
+                cout<<BS_list[i].sub_alloc[j];
+        }
+        cout<<endl<<endl;
+    }
+}
+
+void showUEsinr(vector<baseStation> BS_list){
+    for(int i=0;i<BS_list.size();i++){
+        cout<<setw(6)<<"BS idx"<<":"<<setw(3)<<i<<endl;
+        for(int j=0;j<BS_list[i].UE_list.size();j++){
+            cout<<setw(6)<<"UE idx"<<"|"<<setw(9)<<"avgSINR"<<endl;
+            cout<<setw(6)<<j<<"|"<<setw(9)<<BS_list[i].UE_list[j].avgSINR<<endl;
+            cout<<setw(6)<<"subidx"<<"|"<<setw(9)<<"SINR"<<" (XXX: no used)"<<endl;
+            for(int k=0;k<BS_list[i].UE_list[j].subbandSINR.size();k++){
+                if(BS_list[i].UE_list[j].subbandMask[k]==1)
+                    cout<<setw(6)<<k<<"|"<<setw(9)<<BS_list[i].UE_list[j].subbandSINR[k]<<endl;
+                else
+                    cout<<setw(6)<<k<<"|"<<setw(9)<<"XXX"<<endl;
+            }
+        }
+        cout<<endl;
+    }
+}
+
+void showUERSRP(vector<baseStation> BS_list){
+    for(int i=0;i<BS_list.size();i++){
+        cout<<setw(6)<<"BS idx"<<":"<<setw(3)<<i<<endl;
+        cout<<setw(6)<<"UE idx"<<"|  RSRP"<<endl;
+        for(int j=0;j<BS_list[i].UE_list.size();j++){
+            cout<<setw(6)<<j<<"|";
+            for(int k=0;k<BS_list[i].UE_list[j].RSRP.size();k++){
+                cout<<setw(9)<<BS_list[i].UE_list[j].RSRP[k]<<"|";
+            }
+            cout<<endl;
+        }
+        cout<<endl;
+    }
+    
+}
+
+void initBSlist(vector<baseStation> &BS_list){
+    for(int i=0;i<BS_list.size();i++){
+        for(int j=0;j<N_band;j++){
+            BS_list[i].sub_P[j]=BS_list[i].power;
+            BS_list[i].sub_alloc[j]=-1;
+            //BS_list[i].RB_pa[j]=-1;
+            BS_list[i].RB_pa_actual[j]=-1;
+        }
+        for(int j=0;j<BS_list[i].UE_list.size();j++){
+            BS_list[i].UE_list[j].avgSINR=1;
+            BS_list[i].UE_list[j].CQI=0;
+            BS_list[i].UE_list[j].MCS=0;
+            for(int k=0;k<N_band;k++){
+                BS_list[i].UE_list[j].subbandSINR[k]=0;
+                BS_list[i].UE_list[j].subbandMask[k]=0;
+            }
+        }
+    }
+}
+
+void saveUEinfo(vector<baseStation> BS_list, vector< vector<UEinfo> > &DATA){
+    vector<UEinfo> tmp;
+    int RBnum=0;
+    for(int i=0;i<BS_list.size();i++){
+        for(int j=0;j<BS_list[i].UE_list.size();j++){
+            RBnum=accumulate(BS_list[i].UE_list[j].subbandMask.begin(),BS_list[i].UE_list[j].subbandMask.end(),0);
+            tmp.push_back(UEinfo(i,j,BS_list[i].UE_list[j].UePosition,RBnum,RBnum*CQI_eff[BS_list[i].UE_list[j].CQI]*BW/N_band/1000000,RBnum*MCS_TBS_50mimo[BS_list[i].UE_list[j].MCS]/N_band/1000));
+        }
+    }
+    DATA.push_back(tmp);
+}
+
+void showAllresult(vector< vector<UEinfo> > DATA){
+    for(int i=0;i<DATA.size();i++){
+        cout<<"///////////////////// Exp"<<setw(4)<<i
+            <<" result /////////////////////"<<endl;
+        for(int j=0;j<DATA[i].size();j++){
+            cout<<setw(6)<<"BS idx"<<"|"
+                <<setw(6)<<"UE idx"<<"|"
+                <<setw(9)<<"Position"<<"|"
+                <<setw(6)<<"RBnum"<<"|"
+                <<setw(13)<<"CQI Thrghput"<<"|"
+                <<setw(13)<<"MCS Thrghput"<<endl;
+            cout<<setw(6)<<DATA[i][j].BSidx<<"|"
+                <<setw(6)<<DATA[i][j].UEidx<<"|"
+                <<setw(9)<<p_type[DATA[i][j].UePosition]<<"|"
+                <<setw(6)<<DATA[i][j].RBnum<<"|"
+                <<setw(13)<<DATA[i][j].CQI_thrghput<<"|"
+                <<setw(13)<<DATA[i][j].MCS_thrghput<<endl;
+        }
+    }
+}
+
+void showGJresult(vector< vector<UEinfo> > DATA, vector< vector<string> > cmd, vector< vector<int> > cmdIdx, int OptType){
+    vector<int> ans_idx;
+    
+    bool CQI_flag=0;
+    bool MCS_flag=0;
+    double CQI_low_bound=0;
+    double CQI_upp_bound=0;
+    double MCS_low_bound=0;
+    double MCS_upp_bound=0;
+    
+    double MAX_CQI_T=0;
+    double MAX_MCS_T=0;
+    double tmp_CQI_T=0;
+    double tmp_MCS_T=0;
+    int MAX_CQI_idx=0;
+    int MAX_MCS_idx=0;
+    
+    switch (OptType) {
+        case 1:
+            cout<<"//////// All type users achieve the similar level ////////"<<endl;
+            cout<<"//////////////////////////////////////////////////////////"<<endl;
+            for(int i=0;i<DATA.size();i++){
+                CQI_low_bound=DATA[i][0].CQI_thrghput-10;
+                CQI_upp_bound=DATA[i][0].CQI_thrghput+10;
+                MCS_low_bound=DATA[i][0].MCS_thrghput-10;
+                MCS_upp_bound=DATA[i][0].MCS_thrghput+10;
+                for(int j=0;j<DATA[i].size();j++){
+                    if(DATA[i][j].CQI_thrghput<CQI_low_bound||DATA[i][j].CQI_thrghput>CQI_upp_bound)
+                        CQI_flag=1;
+                    if(DATA[i][j].MCS_thrghput<MCS_low_bound||DATA[i][j].MCS_thrghput>MCS_upp_bound)
+                        MCS_flag=1;
+                    if(CQI_flag==1 && MCS_flag==1)
+                        break;
+                }
+                if(CQI_flag!=1 || MCS_flag!=1)
+                    ans_idx.push_back(i);
+                CQI_flag=0;
+                MCS_flag=0;
+            }
+            if(ans_idx.size()==0){
+                cout<<"///////////////// NO MATCHING RESULT !! //////////////////"<<endl;
+                cout<<endl;
+                return;
+            }
+            break;
+        case 2:
+            cout<<"////////////// Edge Throughput Guaranteed //////////////"<<endl;
+            cout<<"////////////////////////////////////////////////////////"<<endl;
+            for(int i=0;i<DATA.size();i++){
+                for(int j=0;j<DATA[i].size();j++){
+                    if(DATA[i][j].UePosition!=EDGE)
+                        continue;
+                    if(DATA[i][j].MCS_thrghput<10)
+                        MCS_flag=1;
+                    if(DATA[i][j].CQI_thrghput<10)
+                        CQI_flag=1;
+                    if(CQI_flag==1 && MCS_flag==1)
+                        break;
+                }
+                if(CQI_flag!=1 || MCS_flag!=1)
+                    ans_idx.push_back(i);
+                CQI_flag=0;
+                MCS_flag=0;
+            }
+            if(ans_idx.size()==0){
+                cout<<"//////////////  NO MATCHING RESULT !! //////////////"<<endl;
+                cout<<endl;
+                return;
+            }
+            break;
+        default:
+            cout<<"/////////////// Maximum Total Throughput ///////////////"<<endl;
+            cout<<"////////////////////////////////////////////////////////"<<endl;
+            
+            for(int i=0;i<DATA.size();i++){
+                for(int j=0;j<DATA[i].size();j++){
+                    tmp_CQI_T=tmp_CQI_T+DATA[i][j].CQI_thrghput;
+                    tmp_MCS_T=tmp_MCS_T+DATA[i][j].MCS_thrghput;
+                }
+                if(tmp_CQI_T>MAX_CQI_T){
+                    MAX_CQI_T=tmp_CQI_T;
+                    MAX_CQI_idx=i;
+                }
+                if(tmp_MCS_T>MAX_MCS_T){
+                    MAX_MCS_T=tmp_MCS_T;
+                    MAX_MCS_idx=i;
+                }
+                tmp_CQI_T=0;
+                tmp_MCS_T=0;
+            }
+            ans_idx.push_back(MAX_CQI_idx);
+            if(MAX_MCS_idx!=MAX_CQI_idx)
+                ans_idx.push_back(MAX_MCS_idx);
+            break;
+    }
+    // Print solution in ans_idx //
+    cout<<ans_idx.size()<<" Feasible Solution Available"<<endl<<endl;
+    for(int i=0;i<ans_idx.size();i++){
+        for(int j=0;j<cmd.size();j++){
+            cout<<"eNB "<<j<<": "<<cmd[j][cmdIdx[j][ans_idx[i]]]<<endl;
+        }
+        cout<<setw(6)<<"BS idx"<<"|"
+            <<setw(6)<<"UE idx"<<"|"
+            <<setw(9)<<"Position"<<"|"
+            <<setw(6)<<"RBnum"<<"|"
+            <<setw(13)<<"CQI Thrghput"<<"|"
+            <<setw(13)<<"MCS Thrghput"<<endl;
+        for(int k=0;k<DATA[ans_idx[i]].size();k++){
+            cout<<setw(6)<<DATA[ans_idx[i]][k].BSidx<<"|"
+                <<setw(6)<<DATA[ans_idx[i]][k].UEidx<<"|"
+                <<setw(9)<<p_type[DATA[ans_idx[i]][k].UePosition]<<"|"
+                <<setw(6)<<DATA[ans_idx[i]][k].RBnum<<"|"
+                <<setw(13)<<DATA[ans_idx[i]][k].CQI_thrghput<<"|"
+                <<setw(13)<<DATA[ans_idx[i]][k].MCS_thrghput<<endl;
+        }
+        cout<<endl;
+    }
+}
+
+void QLinit(double cell_radius, double *ECB, int ECB_size, vector<action> &action_list){
+    
+    for(int i=0;i<ECB_size;i++){
+        ECB[i] = cell_radius*ECB[i];
+        for(int j=0;j<7;j++)
+            action_list.push_back(action(j,7,ECB[i]));
+    }
+    //sqrt(pow(BS_list[i].UE_list[j].x-BS_list[i].x,2.0)+pow(BS_list[i].UE_list[j].y-BS_list[i].y,2.0))
+    
+}
+
+void QLConfigBSUE(vector<baseStation> &BS_list, vector<action> action_list, int BS_idx, int action_idx){
+    for(int i=0;i<BS_list[BS_idx].RB_pa.size();i++){
+        if(BS_list[BS_idx].RB_pa[i]!=7)
+            BS_list[BS_idx].RB_pa[i]=action_list[action_idx].pa_center;
+    }
+    for(int i=0;i<BS_list[BS_idx].UE_list.size();i++){
+        if(sqrt(pow(BS_list[BS_idx].UE_list[i].x-BS_list[BS_idx].x,2.0)+pow(BS_list[BS_idx].UE_list[i].y-BS_list[BS_idx].y,2.0))<action_list[action_idx].ECB_d){
+            BS_list[BS_idx].UE_list[i].UePosition=CENTER;
+            BS_list[BS_idx].UE_list[i].pa=action_list[action_idx].pa_center;
+        }
+        else{
+            BS_list[BS_idx].UE_list[i].UePosition=EDGE;
+            BS_list[BS_idx].UE_list[i].pa=action_list[action_idx].pa_edge;
+        }
+    }
+}
+
+double calcAllSINR(vector<baseStation> BS_list){
+    double num=0;
+    double maxSINR=0;
+    for(int i=0;i<BS_list.size();i++){
+        for(int j=0;j<BS_list[i].UE_list.size();j++){
+            num++;
+            maxSINR=maxSINR+BS_list[i].UE_list[j].avgSINR;
+        }
+    }
+    return maxSINR/num;
+}
