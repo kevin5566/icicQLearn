@@ -417,9 +417,15 @@ void calcsubSINR(vector<baseStation> &BS_list){
             // j: UE idx
             // k: Subband idx
             // l: target BS idx
-            for(int k=0;k<N_band;k++){
+            for(int k=0;k<N_band;k=k+3){
                 if(BS_list[i].UE_list[j].subbandMask[k]==0)
                     continue;
+                /*
+                if(k%3>0){
+                    BS_list[i].UE_list[j].subbandSINR[k]=BS_list[i].UE_list[j].subbandSINR[k-1];
+                    continue;
+                }
+                */
                 i_tmp=pow(10,N_0*(BW/N_band)/10);   //noise
                 for(int l=0;l<BS_list.size();l++){
                     if(l==i)
@@ -445,15 +451,23 @@ void calcsubSINR(vector<baseStation> &BS_list){
 
 void calcavgSINR(vector<baseStation> &BS_list){
     double avg=0;
+    double div=0;
     for(int i=0;i<BS_list.size();i++){
         for(int j=0;j<BS_list[i].UE_list.size();j++){
-            for(int k=0;k<BS_list[i].UE_list[j].subbandSINR.size();k++){
-                if(BS_list[i].UE_list[j].subbandMask[k]==1)
-                    avg=avg+BS_list[i].UE_list[j].subbandSINR[k];
+            for(int k=0;k<BS_list[i].UE_list[j].subbandSINR.size()-2;k=k+3){
+                if(BS_list[i].UE_list[j].subbandMask[k]==1){
+                    avg=avg+BS_list[i].UE_list[j].subbandSINR[k]*3;
+                    div=div+3;
+                }
             }
-            avg=avg/(double)accumulate(BS_list[i].UE_list[j].subbandMask.begin(),BS_list[i].UE_list[j].subbandMask.end(),0);
+            if(BS_list[i].UE_list[j].subbandMask[48]==1){
+                avg=avg+BS_list[i].UE_list[j].subbandSINR[48]*2;
+                div=div+2;
+            }
+            avg=avg/div;
             BS_list[i].UE_list[j].avgSINR=avg;
             avg=0;
+            div=0;
         }
     }
 }
