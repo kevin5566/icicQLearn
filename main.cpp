@@ -9,8 +9,9 @@ int main(int argc, char* argv[]){
     // for QL
     double cell_radius = 250;
     const int ECB_size = 4;
-    double ECB[ECB_size] = {0.4, 0.52, 0.68, 0.76};
-    vector<int> BSaction;
+    double ECB[ECB_size] = {0.4, 0.52, 0.68, 0.76}; //10/25, 13/25, 17/25, 19/25
+    vector<int> BSaction;       // Record now BS action
+    vector<bool> isBSstable;    // BS Need learning or not
     
     // Read Input //
     if(readInputOpt(argv[1],BS_list)==false)
@@ -21,26 +22,34 @@ int main(int argc, char* argv[]){
     
     // QL state init //
     for(int i=0;i<BS_list.size();i++){
-        QLConfigBSUE(BS_list, action_list, i, 0);
-        BSaction.push_back(0);
+        QLConfigBSUE(BS_list, action_list, i, 0);   //Config all BS with action 0
+        BSaction.push_back(0);      // Record now BS action, 0
+        isBSstable.push_back(0);    // All need learning now, 0
     }
+    
     // RB alloc //
     RBalloc(BS_list);
     
     // Calc Sub-band SINR of all UEs //
     calcsubSINR(BS_list);
     
-    // Calc avg. SINR //
+    // Calc avg. SINR per UE//
     calcavgSINR(BS_list);
     
+    // Calc avg. of All UE SINR //
     double maxSINR=calcAllSINR(BS_list);
     
     // Single BS RB Re-init and RBalloc //
     bool isTerminated=0;
+    
     double maxSINRinFour=maxSINR;       // four adj action
     double maxSINRinFourActionIdx=-1;
-    while(!isTerminated){
-        for(int i=0;i<BS_list.size();i++){
+    double tmpSINR=0;
+    int rtmp=0;
+    
+    while(!isTerminated){   // Terminate learning when all BS stable
+        for(int i=0;i<BS_list.size();i++){  // i: idx of BS
+            // Queueing possible action of now BS
             vector<int> vaild_action;
             if(BSaction[i]+1<action_list.size())
                 vaild_action.push_back(BSaction[i]+1);
@@ -50,14 +59,56 @@ int main(int argc, char* argv[]){
                 vaild_action.push_back(BSaction[i]-1);
             if(BSaction[i]-7>-1)
                 vaild_action.push_back(BSaction[i]-7);
-            
-            if(vaild_action.size()==0)
+
+            if(vaild_action.size()==0){
+                isBSstable[i]=1;
                 continue;
+            }
             
+            maxSINRinFour=maxSINR;
+            maxSINRinFourActionIdx=-1;
+            for(int j=0;j<vaild_action.size();j++){
+                initBSSingle(BS_list, i);
+                QLConfigBSUE(BS_list, action_list, i, vaild_action[j]);
+                RBallocSingleBS(BS_list, i);
+                calcsubSINR(BS_list);
+                calcavgSINR(BS_list);
+                tmpSINR=calcAllSINR(BS_list);
+                if(tmpSINR>maxSINRinFour){
+                    maxSINRinFour=tmpSINR;
+                    maxSINRinFourActionIdx=vaild_action[j];
+                }
+            }
             
-            //RBallocSingleBS(BS_list, i);
+            if(maxSINRinFourActionIdx!=-1){
+                isBSstable[i]=0;
+                maxSINR=maxSINRinFour;
+                BSaction[i]=maxSINRinFourActionIdx;
+                initBSSingle(BS_list, i);
+                QLConfigBSUE(BS_list, action_list, i, BSaction[i]);
+                RBallocSingleBS(BS_list, i);
+            }
+            else{
+                isBSstable[i]=1;
+                initBSSingle(BS_list, i);
+                QLConfigBSUE(BS_list, action_list, i, BSaction[i]);
+                RBallocSingleBS(BS_list, i);
+            }
         }
+        ++rtmp;
+        cout<<rtmp<<endl;
+        if(rtmp==3)
+            isTerminated=1;
+        if(accumulate(isBSstable.begin(), isBSstable.end(), 0)==isBSstable.size())
+            isTerminated=1;
     }
+    
+    // Calc Sub-band SINR of all UEs //
+    calcsubSINR(BS_list);
+    
+    // Calc avg. SINR per UE//
+    calcavgSINR(BS_list);
+    
     // Select UE CQI by SINR //
     for(int i=0;i<BS_list.size();i++)
         for(int j=0;j<BS_list[i].UE_list.size();j++)

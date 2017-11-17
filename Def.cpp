@@ -410,7 +410,7 @@ void RBalloc(vector<baseStation> &BS_list){
 void calcsubSINR(vector<baseStation> &BS_list){
     double sinr_tmp=0;
     double i_tmp=0;
-    double strg_weight_RS=0.214;
+    double strg_weight_RS=30.0/168.0;
     for(int i=0;i<BS_list.size();i++){
         for(int j=0;j<BS_list[i].UE_list.size();j++){
             // i: BS idx
@@ -770,14 +770,11 @@ void showGJresult(vector< vector<UEinfo> > DATA, vector< vector<string> > cmd, v
 }
 
 void QLinit(double cell_radius, double *ECB, int ECB_size, vector<action> &action_list){
-    
     for(int i=0;i<ECB_size;i++){
         ECB[i] = cell_radius*ECB[i];
         for(int j=0;j<7;j++)
             action_list.push_back(action(j,7,ECB[i]));
     }
-    //sqrt(pow(BS_list[i].UE_list[j].x-BS_list[i].x,2.0)+pow(BS_list[i].UE_list[j].y-BS_list[i].y,2.0))
-    
 }
 
 void QLConfigBSUE(vector<baseStation> &BS_list, vector<action> action_list, int BS_idx, int action_idx){
@@ -797,7 +794,121 @@ void QLConfigBSUE(vector<baseStation> &BS_list, vector<action> action_list, int 
     }
 }
 
-//void RBallocSingleBS(vector<baseStation> BS_list, int BS_idx)
+void RBallocSingleBS(vector<baseStation> &BS_list, int i){
+    int UE_pa_num[8]={0,0,0,0,0,0,0,0};
+    int RB_pa_num[8]={0,0,0,0,0,0,0,0};
+    int RB_num=0;
+    int RB_alloced_num=0;
+    int maxRB_num_UE_get=0;
+    int nowRB_num_UE_get=0;
+    vector<int> sched_UE_list;
+    
+    // sum up each pa level has how much UE //
+    for(int j=0;j<BS_list[i].UE_list.size();j++){
+        UE_pa_num[BS_list[i].UE_list[j].pa]=UE_pa_num[BS_list[i].UE_list[j].pa]+1;
+    }
+    // sum up each pa level has how much RB //
+    for(int j=0;j<N_band;j++){
+        RB_pa_num[BS_list[i].RB_pa[j]]=RB_pa_num[BS_list[i].RB_pa[j]]+1;
+    }
+    // higher pa UE first //
+    for(int j=7;j>-1;j--){
+        // j: pa_level value
+        // skip the pa_level w/o UE //
+        if(UE_pa_num[j]==0)
+            continue;
+        
+        // calc the max num of RB that a UE can get //
+        RB_alloced_num=0;
+        for(int k=j;k<8;k++){
+            RB_num=RB_num+RB_pa_num[k];
+            RB_pa_num[k]=0;
+        }
+        
+        // fill now schedule list //
+        for(int k=0;k<BS_list[i].UE_list.size();k++){
+            if(BS_list[i].UE_list[k].pa==j)
+                sched_UE_list.push_back(k);
+        }
+        // alloc RB //
+        for(int k=0;k<sched_UE_list.size()-1;k++){
+            maxRB_num_UE_get=(RB_num-RB_alloced_num)/(UE_pa_num[j]-k);
+            for(int l=0;l<N_band;l=l+3){
+                if(nowRB_num_UE_get>=maxRB_num_UE_get){
+                    RB_alloced_num=RB_alloced_num+nowRB_num_UE_get;
+                    nowRB_num_UE_get=0;
+                    break;
+                }
+                if(BS_list[i].RB_pa[l]<j)
+                    continue;
+                if(BS_list[i].sub_alloc[l]!=-1)
+                    continue;
+                nowRB_num_UE_get=nowRB_num_UE_get+2;
+                // Specify BS RB alloc to which UE //
+                BS_list[i].sub_alloc[l]=sched_UE_list[k];
+                BS_list[i].sub_alloc[l+1]=sched_UE_list[k];
+                // Modify Power level of BS RB //
+                BS_list[i].sub_P[l]=BS_list[i].sub_P[l]+pa_level[BS_list[i].UE_list[sched_UE_list[k]].pa];
+                BS_list[i].sub_P[l+1]=BS_list[i].sub_P[l+1]+pa_level[BS_list[i].UE_list[sched_UE_list[k]].pa];
+                // Record Actual Pa used of BS RB //
+                BS_list[i].RB_pa_actual[l]=BS_list[i].UE_list[sched_UE_list[k]].pa;
+                BS_list[i].RB_pa_actual[l+1]=BS_list[i].UE_list[sched_UE_list[k]].pa;
+                // Update UE RB used(mask) list //
+                BS_list[i].UE_list[sched_UE_list[k]].subbandMask[l]=1;
+                BS_list[i].UE_list[sched_UE_list[k]].subbandMask[l+1]=1;
+                if(l+2==50)
+                    break;
+                nowRB_num_UE_get=nowRB_num_UE_get+1;
+                BS_list[i].sub_alloc[l+2]=sched_UE_list[k];
+                BS_list[i].sub_P[l+2]=BS_list[i].sub_P[l+2]+pa_level[BS_list[i].UE_list[sched_UE_list[k]].pa];
+                BS_list[i].RB_pa_actual[l+2]=BS_list[i].UE_list[sched_UE_list[k]].pa;
+                BS_list[i].UE_list[sched_UE_list[k]].subbandMask[l+2]=1;
+            }
+        }
+        // last one UE get all remains RB  //
+        // do similar thing in above //
+        for(int l=0;l<N_band;l=l+3){
+            if(BS_list[i].RB_pa[l]<j)
+                continue;
+            if(BS_list[i].sub_alloc[l]!=-1)
+                continue;
+            BS_list[i].sub_alloc[l]=sched_UE_list[sched_UE_list.size()-1];
+            BS_list[i].sub_alloc[l+1]=sched_UE_list[sched_UE_list.size()-1];
+            BS_list[i].sub_P[l]=BS_list[i].sub_P[l]+pa_level[BS_list[i].UE_list[sched_UE_list[sched_UE_list.size()-1]].pa];
+            BS_list[i].sub_P[l+1]=BS_list[i].sub_P[l+1]+pa_level[BS_list[i].UE_list[sched_UE_list[sched_UE_list.size()-1]].pa];
+            BS_list[i].RB_pa_actual[l]=BS_list[i].UE_list[sched_UE_list[sched_UE_list.size()-1]].pa;
+            BS_list[i].RB_pa_actual[l+1]=BS_list[i].UE_list[sched_UE_list[sched_UE_list.size()-1]].pa;
+            BS_list[i].UE_list[sched_UE_list[sched_UE_list.size()-1]].subbandMask[l]=1;
+            BS_list[i].UE_list[sched_UE_list[sched_UE_list.size()-1]].subbandMask[l+1]=1;
+            if(l+2==50)
+                break;
+            BS_list[i].sub_alloc[l+2]=sched_UE_list[sched_UE_list.size()-1];
+            BS_list[i].sub_P[l+2]=BS_list[i].sub_P[l+2]+pa_level[BS_list[i].UE_list[sched_UE_list[sched_UE_list.size()-1]].pa];
+            BS_list[i].RB_pa_actual[l+2]=BS_list[i].UE_list[sched_UE_list[sched_UE_list.size()-1]].pa;
+            BS_list[i].UE_list[sched_UE_list[sched_UE_list.size()-1]].subbandMask[l+2]=1;
+        }
+        RB_num=0;
+        sched_UE_list.clear();
+    }
+}
+
+void initBSSingle(vector<baseStation> &BS_list, int BS_idx){
+    for(int j=0;j<N_band;j++){
+        BS_list[BS_idx].sub_P[j]=BS_list[BS_idx].power;
+        BS_list[BS_idx].sub_alloc[j]=-1;
+        //BS_list[i].RB_pa[j]=-1;
+        BS_list[BS_idx].RB_pa_actual[j]=-1;
+    }
+    for(int j=0;j<BS_list[BS_idx].UE_list.size();j++){
+        BS_list[BS_idx].UE_list[j].avgSINR=1;
+        BS_list[BS_idx].UE_list[j].CQI=0;
+        BS_list[BS_idx].UE_list[j].MCS=0;
+        for(int k=0;k<N_band;k++){
+            BS_list[BS_idx].UE_list[j].subbandSINR[k]=0;
+            BS_list[BS_idx].UE_list[j].subbandMask[k]=0;
+        }
+    }
+}
 
 double calcAllSINR(vector<baseStation> BS_list){
     double num=0;

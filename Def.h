@@ -149,6 +149,9 @@ void showGJresult(vector< vector<UEinfo> > DATA, vector< vector<string> > cmd, v
 void QLinit(double cell_radius, double *ECB, int ECB_size, vector<action> &action_list);
 void QLConfigBSUE(vector<baseStation> &BS_list, vector<action> action_list, int BS_idx, int action_idx);
 
+void RBallocSingleBS(vector<baseStation> &BS_list, int i);
+void initBSSingle(vector<baseStation> &BS_list, int BS_idx);
+
 double calcAllSINR(vector<baseStation> BS_list);
 
 const double  SNR_CQI[level_size][CQI_size]={
