@@ -7,7 +7,7 @@ int main(int argc, char* argv[]){
     vector<action> action_list;
     
     // for QL
-    double cell_radius = 250;
+    double cell_radius = 25;
     const int ECB_size = 4;
     double ECB[ECB_size] = {0.4, 0.52, 0.68, 0.76}; //10/25, 13/25, 17/25, 19/25
     vector<int> BSaction;       // Record now BS action
@@ -27,14 +27,10 @@ int main(int argc, char* argv[]){
         isBSstable.push_back(0);    // All need learning now, 0
     }
     
-    // RB alloc //
-    RBalloc(BS_list);
-    
-    // Calc Sub-band SINR of all UEs //
-    calcsubSINR(BS_list);
-    
-    // Calc avg. SINR per UE//
-    calcavgSINR(BS_list);
+    // 3 pre-step for calcAllSINR //
+    RBalloc(BS_list);       // RB alloc
+    calcsubSINR(BS_list);   // Calc Sub-band SINR of all UEs
+    calcavgSINR(BS_list);   // Calc avg. SINR per UE
     
     // Calc avg. of All UE SINR //
     double maxSINR=calcAllSINR(BS_list);
@@ -43,9 +39,9 @@ int main(int argc, char* argv[]){
     bool isTerminated=0;
     
     double maxSINRinFour=maxSINR;       // four adj action
-    double maxSINRinFourActionIdx=-1;
+    double maxSINRinFourActionIdx=-1;   // next step idx, -1 stand for no change
     double tmpSINR=0;
-    int rtmp=0;
+    int round_of_learn=3;
     
     while(!isTerminated){   // Terminate learning when all BS stable
         for(int i=0;i<BS_list.size();i++){  // i: idx of BS
@@ -59,11 +55,6 @@ int main(int argc, char* argv[]){
                 vaild_action.push_back(BSaction[i]-1);
             if(BSaction[i]-7>-1)
                 vaild_action.push_back(BSaction[i]-7);
-
-            if(vaild_action.size()==0){
-                isBSstable[i]=1;
-                continue;
-            }
             
             maxSINRinFour=maxSINR;
             maxSINRinFourActionIdx=-1;
@@ -95,18 +86,15 @@ int main(int argc, char* argv[]){
                 RBallocSingleBS(BS_list, i);
             }
         }
-        ++rtmp;
-        cout<<rtmp<<endl;
-        if(rtmp==3)
+        --round_of_learn;
+        cout<<round_of_learn<<endl;
+        if(round_of_learn==0)
             isTerminated=1;
         if(accumulate(isBSstable.begin(), isBSstable.end(), 0)==isBSstable.size())
             isTerminated=1;
     }
     
-    // Calc Sub-band SINR of all UEs //
     calcsubSINR(BS_list);
-    
-    // Calc avg. SINR per UE//
     calcavgSINR(BS_list);
     
     // Select UE CQI by SINR //
