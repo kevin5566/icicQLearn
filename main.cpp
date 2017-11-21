@@ -22,8 +22,12 @@ int main(int argc, char* argv[]){
     
     // QL state init //
     for(int i=0;i<BS_list.size();i++){
-        QLConfigBSUE(BS_list, action_list, i, 0);   //Config all BS with action 0
-        BSaction.push_back(0);      // Record now BS action, 0
+        for(int j=0;j<N_band;j++){
+            if(BS_list[i].RB_pa[j]!=7){
+                BSaction.push_back(BS_list[i].RB_pa[j]);   // Record now BS action
+                break;
+            }
+        }
         isBSstable.push_back(0);    // All need learning now, 0
     }
     
@@ -41,7 +45,7 @@ int main(int argc, char* argv[]){
     double maxSINRinFour=maxSINR;       // four adj action
     double maxSINRinFourActionIdx=-1;   // next step idx, -1 stand for no change
     double tmpSINR=0;
-    int round_of_learn=3;
+    int round_of_learn=100;
     
     while(!isTerminated){   // Terminate learning when all BS stable
         for(int i=0;i<BS_list.size();i++){  // i: idx of BS
@@ -88,6 +92,11 @@ int main(int argc, char* argv[]){
         }
         --round_of_learn;
         cout<<round_of_learn<<endl;
+        //showBSinfo(BS_list);
+        for(int i=0;i<BSaction.size();i++)
+            cout<<BSaction[i]<<" ";
+        cout<<endl;
+		cout<<round_of_learn<<endl;
         if(round_of_learn==0)
             isTerminated=1;
         if(accumulate(isBSstable.begin(), isBSstable.end(), 0)==isBSstable.size())
@@ -108,9 +117,11 @@ int main(int argc, char* argv[]){
             BS_list[i].UE_list[j].MCS=selectMCS(BS_list[i].UE_list[j].avgSINR);
     
     //showUEsinr(BS_list);
-    showUEinfo(BS_list);
-    showUEallocRB(BS_list);
+    //showUEinfo(BS_list);
+    //showUEallocRB(BS_list);
     showBSinfo(BS_list);
+
+	cout<<round_of_learn<<endl;
     
     return 0;
 }

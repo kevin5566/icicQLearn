@@ -884,9 +884,9 @@ void showGJresult(vector< vector<UEinfo> > DATA, vector< vector<string> > cmd, v
 }
 
 void QLinit(double cell_radius, double *ECB, int ECB_size, vector<action> &action_list){
-    for(int i=0;i<ECB_size;i++){
+    for(int i=0;i<ECB_size;i++){    // 0 1 2 3 (4 states)
         ECB[i] = cell_radius*ECB[i];
-        for(int j=0;j<7;j++)
+        for(int j=0;j<7;j++)        // 0 1 2 3 4 5 6 (7 states) 
             action_list.push_back(action(j,7,ECB[i]));
     }
 }
