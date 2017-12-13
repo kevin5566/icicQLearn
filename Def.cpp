@@ -9,6 +9,8 @@ double getStrg(vector<baseStation> BS_list, int i, int j, int k, int l, bool isR
     double d=sqrt(pow(BS_list[i].UE_list[j].x-BS_list[l].x,2.0)+
                   pow(BS_list[i].UE_list[j].y-BS_list[l].y,2.0));
     double result=20.0*log10(4.0*3.14159*d_0*carrierFreq/c)+10*n*log10(d/d_0);
+    //double result = 18.7*log10(d) + 46.8 + 20*log10(2.66/5.0);        // A1 - Indoor office (LOS)
+    //double result = 22.7*log10(d) + 41.0 + 20*log10(2.66/5.0);        // B1 - Urban micro-cell (LOS)
     //double S=shadow_normal(seed1);
     //while(S-result>-18){
     //    S=shadow_normal(seed1);
@@ -511,6 +513,7 @@ void calcsubSINR(vector<baseStation> &BS_list){
     double sinr_tmp=0;
     double i_tmp=0;
     double strg_weight_RS=30.0/168.0;
+    double strg_weight_data=108.0/168.0;
     for(int i=0;i<BS_list.size();i++){
         for(int j=0;j<BS_list[i].UE_list.size();j++){
             // i: BS idx
@@ -535,7 +538,7 @@ void calcsubSINR(vector<baseStation> &BS_list){
                         if(BS_list[l].sub_alloc[k]==-1) // only RS
                             i_tmp=i_tmp+strg_weight_RS*pow(10,getStrg(BS_list,i,j,k,l,1)/10);
                         else
-                            i_tmp=i_tmp+strg_weight_RS*pow(10,getStrg(BS_list,i,j,k,l,1)/10)+(1-strg_weight_RS)*pow(10,getStrg(BS_list,i,j,k,l,0)/10);
+                            i_tmp=i_tmp+strg_weight_RS*pow(10,getStrg(BS_list,i,j,k,l,1)/10)+strg_weight_data*pow(10,getStrg(BS_list,i,j,k,l,0)/10);
                     }
                     
                 }
