@@ -1,4 +1,5 @@
 // argv[1]:   input.txt
+//** cell_radius should modify to correct value **// 
 #include "Def.h"
 using namespace std;
 
@@ -7,7 +8,7 @@ int main(int argc, char* argv[]){
     vector<action> action_list;
     
     // for QL
-    double cell_radius = 25;
+    double cell_radius = 250; 
     const int ECB_size = 4;
     double ECB[ECB_size] = {0.4, 0.52, 0.68, 0.76}; //10/25, 13/25, 17/25, 19/25
     vector<int> BSaction;       // Record now BS action
@@ -96,7 +97,7 @@ int main(int argc, char* argv[]){
         for(int i=0;i<BSaction.size();i++)
             cout<<BSaction[i]<<" ";
         cout<<endl;
-		cout<<round_of_learn<<endl;
+        cout<<round_of_learn<<endl;
         if(round_of_learn==0)
             isTerminated=1;
         if(accumulate(isBSstable.begin(), isBSstable.end(), 0)==isBSstable.size())
@@ -119,9 +120,16 @@ int main(int argc, char* argv[]){
     //showUEsinr(BS_list);
     //showUEinfo(BS_list);
     //showUEallocRB(BS_list);
-    showBSinfo(BS_list);
+    //showBSinfo(BS_list);
 
 	cout<<round_of_learn<<endl;
     
+    // action_list
+    // idx  pa   ECB
+    // 0~6  0~6  0
+    // +7   0~6  1
+    // +7   0~6  2
+    // +7   0~6  3
+
     return 0;
 }
