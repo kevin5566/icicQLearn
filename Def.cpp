@@ -529,7 +529,7 @@ void calcsubSINR(vector<baseStation> &BS_list){
                     continue;
                 }
                 */
-                i_tmp=pow(10,N_0*(BW/N_band)/10);   //noise
+                i_tmp=pow(10,(N_0+10*log10(BW/N_band))/10);   //noise
                 for(int l=0;l<BS_list.size();l++){
                     if(l==i)
                         sinr_tmp=getStrg(BS_list,i,j,k,l,0); //414
