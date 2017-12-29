@@ -1,0 +1,27 @@
+## input_4UE
+7 3 2 7 1 7 1 6 4 6 2 4 3 1 2 3 1 1 7 
+7 round
+
+## input_dual_strip_20cell_4UE_reuse3
+3 1 7 1 1 1 7 1 1 6 0 7 7 7 1 0 7 1 7 7
+7 round
+
+## input_dual_strip_20cell_4UE_reuse4
+3 1 7 1 1 1 7 1 1 6 0 7 7 7 1 0 7 1 7 7 
+7 round
+
+## input_grid_25cell_4UE_reuse3
+7 1 1 1 7 
+1 1 0 1 1 
+1 1 1 7 0 
+7 0 1 7 1 
+1 1 1 1 0 
+3 round
+
+## input_grid_25cell_4UE_reuse4
+7 1 1 1 7 1 1 0 1 1 1 1 1 7 0 7 0 1 7 1 1 1 1 1 0 
+3 round
+
+## input_semi_25r_4UE
+7 2 8 7 2 7 1 4 5 6 4 2 6 1 1 4 1 1 7 
+8 round
