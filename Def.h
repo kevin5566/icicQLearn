@@ -124,7 +124,7 @@ struct action{
 
 // Return strg value (i.e. Power-PathLoss, unit: dBm) //
 double getStrg(vector<baseStation> BS_list, int i, int j, int k, int l, bool isRS);
-
+double urbanMicro(double d);
 bool readInput(char* ptr, vector<baseStation> &BS_list);
 bool readInputOpt(char* ptr, vector<baseStation> &BS_list);
 void calcRSRP(vector<baseStation> &BS_list);
