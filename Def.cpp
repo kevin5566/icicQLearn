@@ -9,7 +9,8 @@ double getStrg(vector<baseStation> BS_list, int i, int j, int k, int l, bool isR
     double d=sqrt(pow(BS_list[i].UE_list[j].x-BS_list[l].x,2.0)+
                   pow(BS_list[i].UE_list[j].y-BS_list[l].y,2.0));
     //double result=20.0*log10(4.0*3.14159*d_0*carrierFreq/c)+10*n*log10(d/d_0);
-    double result = urbanMicro(d);
+    //double result = urbanMicro(d);
+    double result = pathLoss_A1(d);
     //double result = 18.7*log10(d) + 46.8 + 20*log10(2.66/5.0);        // A1 - Indoor office (LOS)
     //double result = 22.7*log10(d) + 41.0 + 20*log10(2.66/5.0);        // B1 - Urban micro-cell (LOS)
     //double S=shadow_normal(seed1);
@@ -26,6 +27,19 @@ double urbanMicro(double d){
     double los = 22.0*log10(d) + 28.0 + 20.0*log10(2.66);
     double nlos = 36.7*log10(d) + 22.7 + 26.0*log10(2.66);
     double pLos = min(18.0/d, 1.0)*(1-exp(-d/36.0)) + exp(-d/36.0);
+    double pNlos = 1 - pLos;
+    double loss = pLos*los + pNlos*nlos;
+    return loss;
+}
+
+double pathLoss_A1(double d){
+    double los = 18.7*log10(d) + 46.8 + 20*log10(2.66/5.0);
+    double nlos = 36.8*log10(d) + 43.8 + 20*log10(2.66/5.0);
+    double pLos = 1;
+    //if(d <= 2.5)
+    //    pLos = 1;
+    //else
+    //    pLos = 1 - 0.9*(pow(1 - pow(1.24 - 0.61*log10(d), 3), 0.333333));
     double pNlos = 1 - pLos;
     double loss = pLos*los + pNlos*nlos;
     return loss;
