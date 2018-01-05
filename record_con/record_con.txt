@@ -1,0 +1,15 @@
+## EX_CON_4UE_19cell
+0 7 1 1 2 7 7 3 7 8 1 1 1 4 7 1 1 3 1 
+5 round
+
+## EX_CON_4UE_dual
+8 1 7 2 7 3 8 1 3 1 2 0 7 8 1 7 7 7 7 1 
+4 round
+
+## EX_CON_4UE_grid
+1 7 7 3 1 1 7 0 1 1 7 1 1 0 1 7 2 7 1 1 1 1 3 1 1 
+4 round
+
+## EX_CON_4UE_semi_19cell
+0 7 1 1 2 7 7 2 7 1 1 1 1 4 7 1 1 3 1 
+5 round
